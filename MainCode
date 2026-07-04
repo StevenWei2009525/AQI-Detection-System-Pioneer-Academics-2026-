@@ -1,0 +1,182 @@
+#include <SPI.h>
+#include <Wire.h>
+#include <Adafruit_GFX.h>
+#include <Adafruit_SSD1306.h>
+#include <Fonts/FreeSans9pt7b.h>
+#include <Fonts/FreeMonoOblique9pt7b.h>
+#include <DHT.h>
+
+#define SCREEN_WIDTH 128
+#define SCREEN_HEIGHT 64
+
+#define OLED_RESET 4
+Adafruit_SSD1306 display(SCREEN_WIDTH, SCREEN_HEIGHT, &Wire, OLED_RESET);
+
+#define sensor A0
+
+#define DHTPIN 2
+#define DHTTYPE DHT11
+
+DHT dht(DHTPIN, DHTTYPE);
+
+int gasLevel = 0;
+int AQI = 0;
+float powerUsed = 0.0;
+
+String quality = "";
+
+void calculateEnergy()
+{
+    AQI = map(gasLevel, 0, 1023, 0, 500);
+    AQI = constrain(AQI, 0, 500);
+
+    if (AQI <= 50)
+    {
+        powerUsed = 8.0;
+    }
+    else if (AQI <= 100)
+    {
+        powerUsed = 15.0;
+    }
+    else if (AQI <= 150)
+    {
+        powerUsed = 25.0;
+    }
+    else if (AQI <= 200)
+    {
+        powerUsed = 40.0;
+    }
+    else if (AQI <= 300)
+    {
+        powerUsed = 60.0;
+    }
+    else
+    {
+        powerUsed = 80.0;
+    }
+}
+
+void sendSensor()
+{
+    float h = dht.readHumidity();
+    float t = dht.readTemperature();
+
+    if (isnan(h) || isnan(t))
+    {
+        Serial.println("Failed to read from DHT sensor!");
+        return;
+    }
+
+    display.setFont();
+    display.setTextColor(WHITE);
+    display.setTextSize(1);
+
+    display.setCursor(0, 43);
+    display.print("Temp: ");
+    display.print(t, 1);
+    display.print(" C");
+
+    display.setCursor(0, 54);
+    display.print("RH: ");
+    display.print(h, 1);
+    display.print(" %");
+}
+
+void air_sensor()
+{
+    gasLevel = analogRead(sensor);
+
+    calculateEnergy();
+
+    if (gasLevel < 181)
+    {
+        quality = "GOOD";
+    }
+    else if (gasLevel < 225)
+    {
+        quality = "POOR";
+    }
+    else if (gasLevel < 300)
+    {
+        quality = "VERY BAD";
+    }
+    else if (gasLevel < 350)
+    {
+        quality = "DANGER";
+    }
+    else
+    {
+        quality = "TOXIC";
+    }
+
+    display.setTextColor(WHITE);
+
+    display.setFont(&FreeMonoOblique9pt7b);
+    display.setCursor(0, 18);
+    display.println(quality);
+
+    display.setFont();
+
+    display.setTextSize(1);
+    display.setCursor(0, 0);
+    display.print("Air Quality:");
+
+    display.setCursor(0, 30);
+    display.print("AQI: ");
+    display.print(AQI);
+
+    display.setCursor(70, 30);
+    display.print(powerUsed, 0);
+    display.print(" W");
+}
+
+void setup()
+{
+    Serial.begin(9600);
+
+    pinMode(sensor, INPUT);
+    dht.begin();
+
+    if (!display.begin(SSD1306_SWITCHCAPVCC, 0x3C))
+    {
+        Serial.println("SSD1306 allocation failed");
+        while (true);
+    }
+
+    display.clearDisplay();
+    display.setTextColor(WHITE);
+
+    display.setTextSize(2);
+    display.setCursor(38, 0);
+    display.println("Air");
+
+    display.setTextSize(1);
+    display.setCursor(18, 22);
+    display.println("Quality Monitor");
+
+    display.display();
+    delay(1500);
+
+    display.clearDisplay();
+
+    display.setTextSize(2);
+    display.setCursor(15, 20);
+    display.println("BY Abid");
+
+    display.display();
+    delay(1200);
+
+    display.clearDisplay();
+}
+
+void loop()
+{
+    display.clearDisplay();
+
+    air_sensor();
+    sendSensor();
+
+    display.display();
+
+    delay(1000);
+}
