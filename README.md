@@ -1,1 +1,2 @@
 # AQI-Detection-System-Pioneer-Academics-2026-
+This is the main code that is part of my AQI Detection System for Pioneer Academics 2026. It is the code that controls the overall Arduino AQI Detection System, which uses an Arduino Nano, an MQ135, a DHT11, and an OLED display screen to not only calculate but also display AQI numerical values for research opportunities. Additionally, based on the AQI, it will vary its energy usage.
